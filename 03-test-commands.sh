@@ -30,9 +30,21 @@ kubectl rollout status deployment/nginx-external-deploy -n external-target --tim
 
 echo "=== Step 6: Perform Verifications ==="
 
+# Dynamically fetch the Traefik LoadBalancer External IP
+echo "Fetching Traefik LoadBalancer External IP..."
+INGRESS_IP=$(kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
+
+# If external IP is empty or resolved as localhost, fallback to 127.0.0.1 (common in Docker Desktop environments)
+if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "localhost" ]; then
+  echo "LoadBalancer IP is empty or localhost. Falling back to 127.0.0.1"
+  INGRESS_IP="127.0.0.1"
+else
+  echo "Traefik LoadBalancer IP detected: $INGRESS_IP"
+fi
+
 echo -e "\n--- Test A: Route through Gateway using Host 'test.localhost' ---"
 echo "Expected: 200 OK from External Nginx (meaning FQDN resolution succeeded and Host was successfully rewritten)"
-curl -i -H "Host: test.localhost" http://localhost:80/
+curl -i -H "Host: test.localhost" http://$INGRESS_IP:80/
 
 echo -e "\n--- Test B: Access backend service directly with incorrect Host header ---"
 echo "Expected: 404 Not Found - Host header mismatch"
