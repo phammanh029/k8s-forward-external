@@ -15,6 +15,10 @@ ports:
 - name: http
   port: 80
   protocol: TCP
+# Optional: HTTPS Port (Uncomment to test TLS backend)
+# - name: https
+#   port: 443
+#   protocol: TCP
 endpoints:
 - addresses:
   - nginx-external-svc.external-target.svc.cluster.local
@@ -32,6 +36,10 @@ spec:
   - name: http
     port: 80
     targetPort: 80
+  # Optional: HTTPS Port (Uncomment to test TLS backend)
+  # - name: https
+  #   port: 443
+  #   targetPort: 443
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -78,4 +86,25 @@ spec:
           value: nginx.localhost
     backendRefs:
     - name: appservice-external
-      port: 80
+      port: 80 # Change to port 443 to test TLS backend
+---
+# Optional: BackendTLSPolicy to establish TLS between Traefik and the HTTPS backend.
+# To use this, you must also create the CA Secret 'external-ca-cert' in the 'demo' namespace.
+#
+# apiVersion: gateway.networking.k8s.io/v1alpha3
+# kind: BackendTLSPolicy
+# metadata:
+#   name: external-service-tls
+#   namespace: demo
+# spec:
+#   targetRefs:
+#   - group: ""
+#     kind: Service
+#     name: appservice-external
+#   validation:
+#     # Controls the SNI sent by Traefik and checks backend cert CN/SAN
+#     hostname: nginx.localhost
+#     caCertificateRefs:
+#     - group: ""
+#       kind: Secret
+#       name: external-ca-cert

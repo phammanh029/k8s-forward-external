@@ -55,3 +55,41 @@ echo -e "\n--- Test C: Access backend service directly with correct Host header 
 echo "Expected: 200 OK from External Nginx"
 kubectl run curl-test-200 --rm -i --tty --image=curlimages/curl --namespace=demo --restart=Never -- \
   curl -i -H "Host: nginx.localhost" http://nginx-external-svc.external-target.svc.cluster.local/
+
+# ==============================================================================
+# OPTIONAL: HOW TO VERIFY HTTPS (TLS) ROUTING PATH
+# ==============================================================================
+#
+# If you want to test routing to the mock external service over HTTPS:
+#
+# 1. Generate a self-signed TLS certificate for 'nginx.localhost':
+#    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#      -keyout tls.key -out tls.crt \
+#      -subj "/CN=nginx.localhost"
+#
+# 2. Create the TLS Secret in the 'external-target' namespace:
+#    kubectl create secret tls nginx-external-tls \
+#      -n external-target --key tls.key --cert tls.crt
+#
+# 3. Create the CA validation Secret in the 'demo' namespace (trust store for Traefik):
+#    kubectl create secret generic external-ca-cert \
+#      -n demo --from-file=ca.crt=tls.crt
+#
+# 4. Edit '01-mock-external.yaml' to uncomment:
+#    - Nginx HTTPS server block (port 443) in the ConfigMap
+#    - Port 443 definition, volumeMounts, and volumes in the Deployment
+#    - Port 443 in the Service
+#
+# 5. Edit '02-gateway-routing.yaml' to:
+#    - Uncomment port 443 in the EndpointSlice and the Headless Service
+#    - Change HTTPRoute backendRefs port from 80 to 443
+#    - Uncomment the BackendTLSPolicy resource at the end of the file
+#
+# 6. Re-apply the manifests:
+#    kubectl apply -f 01-mock-external.yaml
+#    kubectl apply -f 02-gateway-routing.yaml
+#
+# 7. Test using the dynamic INGRESS_IP:
+#    curl -i -H "Host: test.localhost" http://$INGRESS_IP/
+#    (Expected: 200 OK from External Secure Nginx (HTTPS))
+

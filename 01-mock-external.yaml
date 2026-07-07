@@ -10,25 +10,54 @@ metadata:
   namespace: external-target
 data:
   default.conf: |
+    # HTTP Server Block
     server {
         listen 80;
         server_name nginx.localhost;
 
         location / {
             default_type text/plain;
-            return 200 "Hello from External Nginx\n";
+            return 200 "Hello from External Nginx (HTTP)\n";
         }
     }
 
+    # HTTP Default Block (Fallback 404)
     server {
         listen 80 default_server;
         server_name _;
 
         location / {
             default_type text/plain;
-            return 404 "Not Found - Host header mismatch\n";
+            return 404 "Not Found - Host header mismatch (HTTP)\n";
         }
     }
+
+    # Optional: HTTPS Server Block (Uncomment to test TLS backend)
+    # server {
+    #     listen 443 ssl;
+    #     server_name nginx.localhost;
+    #
+    #     ssl_certificate /etc/nginx/certs/tls.crt;
+    #     ssl_certificate_key /etc/nginx/certs/tls.key;
+    #
+    #     location / {
+    #         default_type text/plain;
+    #         return 200 "Hello from External Secure Nginx (HTTPS)\n";
+    #     }
+    # }
+    #
+    # server {
+    #     listen 443 ssl default_server;
+    #     server_name _;
+    #
+    #     ssl_certificate /etc/nginx/certs/tls.crt;
+    #     ssl_certificate_key /etc/nginx/certs/tls.key;
+    #
+    #     location / {
+    #         default_type text/plain;
+    #         return 404 "Not Found - Host header mismatch (HTTPS)\n";
+    #     }
+    # }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,15 +80,27 @@ spec:
       - name: nginx
         image: nginx:alpine
         ports:
-        - containerPort: 80
+        - name: http
+          containerPort: 80
+        # Optional TLS Port (Uncomment to test TLS backend)
+        # - name: https
+        #   containerPort: 443
         volumeMounts:
         - name: config-volume
           mountPath: /etc/nginx/conf.d/default.conf
           subPath: default.conf
+        # Optional TLS Cert Mount (Uncomment to test TLS backend)
+        # - name: cert-volume
+        #   mountPath: /etc/nginx/certs
+        #   readOnly: true
       volumes:
       - name: config-volume
         configMap:
           name: nginx-mock-config
+      # Optional TLS Cert Volume (Uncomment to test TLS backend)
+      # - name: cert-volume
+      #   secret:
+      #     secretName: nginx-external-tls
 ---
 apiVersion: v1
 kind: Service
@@ -71,5 +112,9 @@ spec:
   - name: http
     port: 80
     targetPort: 80
+  # Optional TLS Port (Uncomment to test TLS backend)
+  # - name: https
+  #   port: 443
+  #   targetPort: 443
   selector:
     app: nginx-external
