@@ -11,7 +11,7 @@ k3d cluster create gateway-poc \
   --k3s-arg "--disable=traefik@server:0"
 
 echo "=== Step 2: Install Gateway API CRDs ==="
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/standard-install.yaml
+kubectl apply --server-side=true -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/experimental-install.yaml
 
 echo "=== Step 3: Install Traefik with Kubernetes Gateway Provider enabled ==="
 helm repo add traefik https://traefik.github.io/charts
